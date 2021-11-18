@@ -21,7 +21,7 @@ request.onsuccess = ({ target }) => {
   }
 };
 
-request.onerror = function(event) {
+request.onerror = function (event) {
   console.log("Woops! " + event.target.errorCode);
 };
 
@@ -34,7 +34,33 @@ function checkDatabase() {
   // TODO: this function should check for any saved transactions and post them
   // all to the database. Delete the transactions from IndexedDB if the post
   // request is successful.
+  console.log("check db invoked");
+
+  const transaction = db.transaction(["BudgetStore"], "readonly");
+  const store = transaction.objectStore("BudgetStore");
+  const getAll = store.getAll();
+
+  getAll.onsuccess = async function () {
+    if (getAll.result.length === 0) {
+      return;
+    }
+    const response = await fetch("/api/transaction/bulk", {
+      method: "POST",
+      body: JSON.stringify(getAll.result),
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+      },
+    });
+    const dbTransactions = await response.json();
+    if (dbTransactions.length > 0) {
+      const delTxn = db.transaction(["BudgetStore"], "readwrite");
+      const currentStore = delTxn.objectStore("BudgetStore");
+      currentStore.clear();
+      console.log("Clearing store 🧹");
+    }
+  };
 }
 
 // listen for app coming back online
-window.addEventListener('online', checkDatabase);
+window.addEventListener("online", checkDatabase);
