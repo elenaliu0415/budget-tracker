@@ -28,6 +28,10 @@ request.onerror = function (event) {
 function saveRecord(record) {
   // TODO: this function should save a transaction object to indexedDB so that
   // it can be synced with the database when the user goes back online.
+  console.log("Save record invoked");
+  const transaction = db.transaction(["BudgetStore"], "readwrite");
+  const store = transaction.objectStore("BudgetStore");
+  store.add(record);
 }
 
 function checkDatabase() {
