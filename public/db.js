@@ -5,41 +5,45 @@ const indexedDB =
   window.msIndexedDB ||
   window.shimIndexedDB;
 
+const budgetVersion = 1;
 let db;
-const request = indexedDB.open("budget", 1);
 
-request.onupgradeneeded = ({ target }) => {
-  target.result.createObjectStore("pending", { autoIncrement: true });
+// Create a new db request for a "budget" database.
+const request = indexedDB.open("BudgetDB", budgetVersion);
+
+request.onerror = function (e) {
+  console.log(e.target);
+  console.log(`Woops! ${e.target.errorCode}`);
 };
 
-request.onsuccess = ({ target }) => {
-  db = target.result;
+request.onupgradeneeded = function (e) {
+  console.log("Upgrade needed in IndexDB");
 
-  // check if app is online before reading from db
+  const { oldVersion } = e;
+  const newVersion = e.newVersion || db.version;
+
+  console.log(`DB Updated from version ${oldVersion} to ${newVersion}`);
+
+  db = e.target.result;
+
+  if (db.objectStoreNames.length === 0) {
+    db.createObjectStore("BudgetStore", { autoIncrement: true });
+  }
+};
+
+request.onsuccess = function (e) {
+  console.log("success");
+  db = e.target.result;
+
+  // Check if app is online before reading from db
   if (navigator.onLine) {
+    console.log("Backend online! 🗄️");
     checkDatabase();
   }
 };
 
-request.onerror = function (event) {
-  console.log("Woops! " + event.target.errorCode);
-};
-
-function saveRecord(record) {
-  // TODO: this function should save a transaction object to indexedDB so that
-  // it can be synced with the database when the user goes back online.
-  console.log("Save record invoked");
-  const transaction = db.transaction(["BudgetStore"], "readwrite");
-  const store = transaction.objectStore("BudgetStore");
-  store.add(record);
-}
-
 function checkDatabase() {
-  // TODO: this function should check for any saved transactions and post them
-  // all to the database. Delete the transactions from IndexedDB if the post
-  // request is successful.
   console.log("check db invoked");
-
   const transaction = db.transaction(["BudgetStore"], "readonly");
   const store = transaction.objectStore("BudgetStore");
   const getAll = store.getAll();
@@ -66,5 +70,12 @@ function checkDatabase() {
   };
 }
 
-// listen for app coming back online
+function saveRecord(record) {
+  console.log("Save record invoked");
+  const transaction = db.transaction(["BudgetStore"], "readwrite");
+  const store = transaction.objectStore("BudgetStore");
+  store.add(record);
+}
+
+// Listen for app coming back online
 window.addEventListener("online", checkDatabase);
